@@ -19,7 +19,8 @@ class EnginePublic(object):
         self._storage[Name] = Value
 
     def FetchVariable(self, Name: str):
-        assert Name in self._storage.keys(), f"{Name} not stored"
+        if Name not in self._storage.keys():
+            return None
 
         return self._storage[Name]
 
@@ -127,6 +128,7 @@ class EngineObject(object):
 class EngineBase(object):
     def __init__(self, config: EngineConfig):
         self.public = EnginePublic(config.name)
+        self.MessageBase = config.setup
         self.providers = config.providers
         self.objects = []
         self._thread = None
