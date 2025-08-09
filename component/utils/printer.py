@@ -7,7 +7,8 @@ class Printer(Component):
         self.prefix = "Uninitialized Printer : "
 
     def Start(self):
-        self.prefix = f"{type(self.object.engine)} - {type(self.object)} : "
+        self.prefix = f"{self.object._engine.public.name} - {self.object} : "
 
     def Print(self, Message):
-        print(self.prefix, Message)
+        if Message:
+            print(self.prefix, Message)

@@ -1,10 +1,30 @@
+from abc import abstractmethod
 from threading import Thread
+
+from provider import Provider
+from .config import EngineConfig
 
 
 class EnginePublic(object):
     def __init__(self, name: str):
         self.name = name
         self._storage = dict()
+
+    def AddVariable(self, Name: str, Value: object):
+        assert Name not in self._storage.keys(), f"{Name} already exists as a variable"
+
+        self._storage[Name] = Value
+
+    def UpdateVariable(self, Name: str, Value: object):
+        self._storage[Name] = Value
+
+    def FetchVariable(self, Name: str):
+        assert Name in self._storage.keys(), f"{Name} not stored"
+
+        return self._storage[Name]
+
+    def DeleteVariable(self, Name: str):
+        self._storage.pop(Name)
 
 
 class EngineObject(object):
@@ -14,12 +34,17 @@ class EngineObject(object):
         self._activation = activation
         self._engine = None
 
+    @abstractmethod
+    def __str__(self):
+        return "Plain Object"
+
     def RegisterComponent(self, NewComponent):
         from engine import Component
         assert isinstance(NewComponent, Component), f"Object of type {type(NewComponent)} is Not a Component"
 
         NewComponent.OnCreate(self)
         self._components.append(NewComponent)
+        return NewComponent
 
     def FindComponentOfType(self, Type: type):
         for component in self._components:
@@ -28,9 +53,34 @@ class EngineObject(object):
 
         return None
 
+    def GetProvider(self, name: str) -> Provider | None:
+        assert self._engine, "Object not initialized"
+
+        for provider in self._engine.providers:
+            if provider.name == name:
+                return provider
+
+        return None
+
+
     def SetActivation(self, NewActivation: bool):
         self._activation = NewActivation
         self.OnActivationChange(self._activation)
+
+
+    def FindObjectOfType(self, Type: type):
+        for obj in self._engine.objects:
+            if isinstance(obj, Type):
+                return obj
+
+        return None
+
+    def FindObjectWithTag(self, Tag: str):
+        for obj in self._engine.objects:
+            if obj.tag == Tag:
+                return obj
+
+        return None
 
 
     def OnCreate(self, Engine):
@@ -75,8 +125,9 @@ class EngineObject(object):
 
 
 class EngineBase(object):
-    def __init__(self, config):
+    def __init__(self, config: EngineConfig):
         self.public = EnginePublic(config.name)
+        self.providers = config.providers
         self.objects = []
         self._thread = None
         self.isWorking = False
@@ -107,20 +158,6 @@ class EngineBase(object):
 
         print("Engine Started...")
 
-    def FindObjectOfType(self, Type: type):
-        for obj in self.objects:
-            if isinstance(obj, Type):
-                return obj
-
-        return None
-
-    def FindObjectWithTag(self, Tag: str):
-        for obj in self.objects:
-            if obj.tag == Tag:
-                return obj
-
-        return None
-
     def Join(self):
         if self._thread:
             self._thread.join()
@@ -133,6 +170,9 @@ class EngineBase(object):
 
         for obj in self.objects:
             obj.Die()
+
+        for provider in self.providers:
+            provider.Release()
 
         print("Engine Stopped...")
 
